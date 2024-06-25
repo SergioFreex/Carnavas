@@ -98,21 +98,12 @@ local function CreateCaster(CastID)
 end
 
 if RunService:IsClient() then
-    --local UseKeys = RemoteFunction:InvokeServer('GetCasters')
-    --local newCastersTable = {}
-    --for k,_ in next, UseKeys do
-    --    CreateCaster(tostring(k))
-    --end
-    --ClientCasters = newCastersTable
     for _,plr in next, PlayerService:GetPlayers() do
         if ClientCasters[tostring(plr.UserId)] == nil then
             CreateCaster(tostring(plr.UserId))
         end
     end
     
-    --if ClientCasters[tostring(PlayerService.LocalPlayer.UserId)] == nil then
-    --    CreateCaster(tostring(PlayerService.LocalPlayer.UserId))
-    --end
     if ClientCasters['Server'] == nil then
         CreateCaster('Server')
     end
