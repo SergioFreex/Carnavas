@@ -195,12 +195,7 @@ local function GetCaster(CasterID)
     return nil
 end
 
-local function FireCaster(...)
-
-end
-
 function module:CastTheGyattDamnBall(...)
-    -- StartPosition: Vector3, EndPosition: Vector3, Speed: number, Drop: Vector3, Pitcher, DeleteOnTouch: boolean, PitchingBall: boolean, CastType: string
     local Args = {...}
     local StartPosition = Args[1]
     local EndPosition = Args[2]
