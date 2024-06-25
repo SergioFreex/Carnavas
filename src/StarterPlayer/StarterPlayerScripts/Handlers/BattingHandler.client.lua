@@ -1,0 +1,210 @@
+repeat task.wait() until game:IsLoaded()
+
+-- // Services \\ --
+local PlayerService = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local TweenService = game:GetService('TweenService')
+local DebrisService = game:GetService('Debris')
+local RunService = game:GetService('RunService')
+local UserInputService = game:GetService('UserInputService')
+local StarterPlayer = game:GetService('StarterPlayer')
+
+-- // Variables \\ --
+local LocalPlayer = PlayerService.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local StrikeZone = game.Workspace.Carnavas.Batting:WaitForChild('StrikeZone', 10)
+local Camera = game.Workspace.CurrentCamera
+local BatterEvent = ReplicatedStorage.Carnavas.Events.BatterEvent
+local BattingUI = LocalPlayer.PlayerGui:WaitForChild('Batting', 10)
+local BallsFolder = game.Workspace:WaitForChild('Balls', 10)
+
+local Connections = {}
+
+local PreviousCameraCFrame = nil
+
+-- // Tweening \\ --
+local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+local Camera_ZoomIn = TweenService:Create(Camera, tweenInfo, {FieldOfView = 50})
+local Camera_ZoomOut = TweenService:Create(Camera, tweenInfo, {FieldOfView = 80})
+
+-- // Animations \\ --
+local AnimationsFolder = ReplicatedStorage.Carnavas.Animations.BattingAnimations
+local I = AnimationsFolder.Idle
+local L = AnimationsFolder.Load
+local S = AnimationsFolder.Swing
+
+local Animations = {
+    Idle = nil,
+    Load = nil,
+    Swing = nil
+}
+
+local function StepOut()
+    local Humanoid = LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
+    Animations.Idle:Stop(.4)
+    Animations.Load:Stop(.4)
+    task.delay(.3, function()
+        Animations.Swing:Stop(.4)
+    end)
+    Camera_ZoomOut:Play()
+    Camera.CFrame = PreviousCameraCFrame
+    Camera.CameraType = Enum.CameraType.Custom
+
+    if Humanoid and Humanoid:FindFirstChildOfClass('Animator') then
+        local Animator = Humanoid.Animator
+        Humanoid.WalkSpeed = StarterPlayer.CharacterWalkSpeed
+        Humanoid.AutoRotate = true
+    end
+
+    Mouse.TargetFilter = nil
+    UserInputService.MouseIconEnabled = true
+    BattingUI.Enabled = false
+
+    BatterEvent:FireServer('StepOutBattersBox')
+    PreviousCameraCFrame = nil
+
+    for key,connection in next, Connections do
+        Connections[key]:Disconnect()
+    end
+end
+
+UserInputService.InputChanged:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.Touch then
+        BattingUI.Thingy.Text = 'Tap here to step out of the box.'
+        BattingUI.BattingReticle.Visible = false
+    elseif Input.UserInputType == Enum.UserInputType.Keyboard then
+        BattingUI.Thingy.Text = 'Press E to step out of the box.'
+        BattingUI.BattingReticle.Visible = true
+    end
+end)
+
+BattingUI.Thingy.MouseButton1Click:Connect(function()
+    StepOut()
+end)
+
+BatterEvent.OnClientEvent:Connect(function(Action, ...)
+    if Action == 'BeginBatting' then
+        if LocalPlayer.Character then
+            local Humanoid = LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
+
+            if Humanoid and Humanoid:FindFirstChildOfClass('Animator') then
+                local Animator = Humanoid.Animator
+                Humanoid.WalkSpeed = 0
+                Humanoid.AutoRotate = false
+                Animations.Idle = Animator:LoadAnimation(I)
+                Animations.Load = Animator:LoadAnimation(L)
+                Animations.Swing = Animator:LoadAnimation(S)
+            end
+
+            PreviousCameraCFrame = Camera.CFrame
+
+            Camera.CameraType = Enum.CameraType.Scriptable
+            Camera.CFrame = StrikeZone.CFrame * CFrame.new(0, 0, 9) -- old y value was 1.2
+            Camera_ZoomIn:Play()
+            Animations.Idle:Play(.5)
+
+            Mouse.TargetFilter = game.Workspace.Carnavas.Batting
+
+            Connections.ChildAddedConnection = BallsFolder.ChildAdded:Connect(function(Child)
+                if Child.Name == 'PitchedBall' then
+                    Animations.Load:Play(.5)
+                end
+            end)
+
+            BattingUI.Enabled = true
+            UserInputService.MouseIconEnabled = false
+            Connections.Connection2 = RunService.RenderStepped:Connect(function(Delta)
+                local Reticle = BattingUI.BattingReticle
+
+                Reticle.Position = UDim2.fromOffset(Mouse.X, Mouse.Y)
+            end)
+
+            Connections.Connection3 = UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+                if not GameProcessed then
+                    if Input.KeyCode == Enum.KeyCode.E then
+                        StepOut()
+                    end
+                end
+            end)
+
+            Connections.Connection = Mouse.Button1Down:Connect(function()
+                if not Animations.Load.IsPlaying then return end
+                if Animations.Swing.IsPlaying then return end
+                Animations.Swing:Play()
+                task.wait(.1) -- offset
+                local Target = Mouse.Target
+                if Target then
+                    if Target.Name == 'PitchedBall' then
+                        local HalfSize = Target.Size.Z / 2
+                        local cframeSpot = StrikeZone.CFrame * CFrame.new(0, -1, 0)
+                        local SweetSpot = Vector3.new(cframeSpot.X, cframeSpot.Y, cframeSpot.Z)
+                        local BallPosition = Target.Position
+                        local HitPosition = Mouse.Hit
+                        local Relative = Target.CFrame:ToObjectSpace(HitPosition)
+                        local BatPosition = LocalPlayer.Character.LeftHand.Bat.DistancePart.Position
+                        local Distance = (math.round((SweetSpot - Target.Position).Magnitude * 100) / 100)
+                        local Point1, Point2 = (cframeSpot + cframeSpot.LookVector), (cframeSpot + cframeSpot.LookVector * -1)
+                        local Magnitude1, Magnitude2 = (Point1.Position - BallPosition).Magnitude, (Point2.Position - BallPosition).Magnitude
+                        print(Distance)
+                        if not (Magnitude1 <= Magnitude2) then -- If the ball is behind the sweetspot then
+                            --print('Behind Sweetspot')
+                            if Distance > 5 then
+                                print('Swing and a miss, bud! (too late)')
+                            else
+                                local AngleTowards = (Distance / 5) * -90
+
+
+                                -- local mathematics = (((HalfSize * 2) / Relative.Y) * 10) * -1
+                                -- local LaunchAngle = math.clamp(mathematics, -15, 80)
+
+
+                                local LaunchAngle = math.clamp((math.round((Relative.Y) * 100)) * -1, -15, 250)
+                                -- print('Launch Angle: '.. LaunchAngle)
+                                -- print('Relative Y: ' .. Relative.Y)
+                                -- print('Relative X: ' .. Relative.X)
+
+                                BatterEvent:FireServer('SwingAtBall', AngleTowards, BallPosition, LaunchAngle, Relative.Y, true)
+                                task.delay(.5, function()
+                                    StepOut()
+                                end)
+                            end
+                        else -- If the ball is in front of the sweetspot then
+                            --print('Front of Sweetspot')
+                            if Distance > 8 then
+                                print('Swing and a miss, bud! (too early)')
+                            else
+                                local AngleTowards = (Distance / 8) * 90
+
+
+                                -- local mathematics = (((HalfSize) / Relative.Y) * 10) * -1
+                                -- local LaunchAngle = math.clamp(mathematics, -15, 80)
+
+
+                                local LaunchAngle = math.clamp((math.round((Relative.Y) * 100)) * -1, -15, 250)
+                                print('Launch Angle: ' .. LaunchAngle)
+                                print('Relative Y: ' .. Relative.Y)
+                                -- print('Launch Angle: '.. LaunchAngle)
+                                -- print('Relative Y: ' .. Relative.Y)
+                                -- print('Relative X: ' .. Relative.X)
+
+                                BatterEvent:FireServer('SwingAtBall', AngleTowards, BallPosition, LaunchAngle, Relative.Y, true)
+                                task.delay(.5, function()
+                                    StepOut()
+                                end)
+                            end
+                        end
+                    else
+                        print('Swing and a miss, bud! (you missed)')
+                    end
+                end
+            end)
+
+        end
+    elseif Action == 'DeletePitchedBalls' then
+        for _,v in next, BallsFolder:GetChildren() do
+            if v.Name == 'PitchedBall' then
+                v:Destroy()
+            end
+        end
+    end
+end)
