@@ -56,6 +56,7 @@ Rubber.Touched:Connect(function(BasePart)
         if not Player then return end
         if not table.find(_G.Configs.Whitelist_Teams, Player.Team.Name) then print(Player.Name .. 'attempted to pitch without being on a whitelisted team.') return end
         if Character.Humanoid.Health <= 0 then return end
+        if (Character.HumanoidRootPart.Position - Rubber.Position).Magnitude >= 6 then print("too far") return end
         
         for _,team in next, TeamService:GetTeams() do
             if team ~= Player.Team then
