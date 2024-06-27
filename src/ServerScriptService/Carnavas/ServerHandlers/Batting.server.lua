@@ -18,7 +18,7 @@ local Debounce = {false, 1}
 function GetLaunchAngleVelocity(LaunchAngle: number)
     local a = _G.Configs.MaxPower -- Maximum velocity
     local b = 30 -- Angle for maximum velocity
-    local c = 24 -- Controls the width of the 'bell'
+    local c = 15 -- Controls the width of the 'bell'
     local Velocity = a * math.exp(-(LaunchAngle - b)^2 / (2*c^2))
     return Velocity
 end
@@ -128,7 +128,7 @@ BatterEvent.OnServerEvent:Connect(function(Player, Action, ...)
             if not _G.Configs.UseRawPower then
                 local Math = FinalVelo / _G.Configs.DividePowerBy
                 FinalVelo = math.clamp(Math, _G.Configs.MinPower, _G.Configs.MaxPower)
-                FinalDrop /= (_G.Configs.DividePowerBy * 1.2)
+                FinalDrop /= (_G.Configs.DividePowerBy * _G.Configs.DividePowerBy)
             end
         
             print(`Hit Stats:\nLaunch Angle: {LaunchAngle}\nHit Velocity: {FinalVelo}`)
