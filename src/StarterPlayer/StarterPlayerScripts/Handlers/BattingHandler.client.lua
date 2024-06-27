@@ -68,6 +68,16 @@ local function StepOut()
     end
 end
 
+-- if you see this, i (s_ilversun) am a femboy and i love wearing skirts, thigh highs, and tights :3
+
+local function CalculateLaunchAngle(RelativeY: number, HalfSize: number)
+    if RelativeY > 0 then
+        return 30 + 50 * (RelativeY / HalfSize)
+    else
+        return (30 + 50 * ((RelativeY * -1) / HalfSize)) * -1
+    end
+ end
+
 UserInputService.InputChanged:Connect(function(Input)
     if Input.UserInputType == Enum.UserInputType.Touch then
         BattingUI.Thingy.Text = 'Tap here to step out of the box.'
@@ -135,35 +145,41 @@ BatterEvent.OnClientEvent:Connect(function(Action, ...)
                 local Target = Mouse.Target
                 if Target then
                     if Target.Name == 'PitchedBall' then
-                        local HalfSize = Target.Size.Z / 2
-                        local cframeSpot = StrikeZone.CFrame * CFrame.new(0, -1, 0)
+                        local HalfSize = Target.Size.X / 2
+                        local cframeSpot = StrikeZone.CFrame * CFrame.new(0, -.5, 0)
                         local SweetSpot = Vector3.new(cframeSpot.X, cframeSpot.Y, cframeSpot.Z)
                         local BallPosition = Target.Position
-                        local HitPosition = Mouse.Hit
-                        local Relative = Target.CFrame:ToObjectSpace(HitPosition)
+                        local HitPosition = Mouse.Hit.Position
+                        local Relative = Target.CFrame:PointToObjectSpace(HitPosition)
                         local BatPosition = LocalPlayer.Character.LeftHand.Bat.DistancePart.Position
                         local Distance = (math.round((SweetSpot - Target.Position).Magnitude * 100) / 100)
                         local Point1, Point2 = (cframeSpot + cframeSpot.LookVector), (cframeSpot + cframeSpot.LookVector * -1)
                         local Magnitude1, Magnitude2 = (Point1.Position - BallPosition).Magnitude, (Point2.Position - BallPosition).Magnitude
+                        
+                        local Southernplayalisticadillacmuzik = Relative.Y * -1
+                        
                         print(Distance)
                         if not (Magnitude1 <= Magnitude2) then -- If the ball is behind the sweetspot then
                             --print('Behind Sweetspot')
                             if Distance > 5 then
                                 print('Swing and a miss, bud! (too late)')
+                                task.wait(1)
+                                Animations.Swing:Stop(.5)
                             else
                                 local AngleTowards = (Distance / 5) * -90
 
+                                local LaunchAngle = CalculateLaunchAngle(Southernplayalisticadillacmuzik, HalfSize)
+                                -- local LaunchAngle = (Southernplayalisticadillacmuzik / HalfSize) * -80
 
-                                -- local mathematics = (((HalfSize * 2) / Relative.Y) * 10) * -1
-                                -- local LaunchAngle = math.clamp(mathematics, -15, 80)
 
-
-                                local LaunchAngle = math.clamp((math.round((Relative.Y) * 100)) * -1, -15, 250)
+                                -- local LaunchAngle = math.clamp((math.round((Southernplayalisticadillacmuzik) * 100)) * -1, -15, 250)
                                 -- print('Launch Angle: '.. LaunchAngle)
-                                -- print('Relative Y: ' .. Relative.Y)
+                                print('Relative Y: ' .. Southernplayalisticadillacmuzik)
                                 -- print('Relative X: ' .. Relative.X)
 
-                                BatterEvent:FireServer('SwingAtBall', AngleTowards, BallPosition, LaunchAngle, Relative.Y, true)
+                                print(`Client Hit Stats:\nRelative Y: {Southernplayalisticadillacmuzik}\nLaunch Angle: {LaunchAngle}`)
+
+                                BatterEvent:FireServer('SwingAtBall', AngleTowards, BallPosition, LaunchAngle, Southernplayalisticadillacmuzik, true)
                                 task.delay(.5, function()
                                     StepOut()
                                 end)
@@ -172,22 +188,23 @@ BatterEvent.OnClientEvent:Connect(function(Action, ...)
                             --print('Front of Sweetspot')
                             if Distance > 8 then
                                 print('Swing and a miss, bud! (too early)')
+                                task.wait(1)
+                                Animations.Swing:Stop(.5)
                             else
                                 local AngleTowards = (Distance / 8) * 90
 
+                                local LaunchAngle = CalculateLaunchAngle(Southernplayalisticadillacmuzik, HalfSize)
+                                -- local LaunchAngle = (Southernplayalisticadillacmuzik / HalfSize) * -80
 
-                                -- local mathematics = (((HalfSize) / Relative.Y) * 10) * -1
-                                -- local LaunchAngle = math.clamp(mathematics, -15, 80)
 
-
-                                local LaunchAngle = math.clamp((math.round((Relative.Y) * 100)) * -1, -15, 250)
-                                print('Launch Angle: ' .. LaunchAngle)
-                                print('Relative Y: ' .. Relative.Y)
+                                -- local LaunchAngle = math.clamp((math.round((Southernplayalisticadillacmuzik) * 100)) * -1, -15, 250)
                                 -- print('Launch Angle: '.. LaunchAngle)
-                                -- print('Relative Y: ' .. Relative.Y)
+                                print('Relative Y: ' .. Southernplayalisticadillacmuzik)
                                 -- print('Relative X: ' .. Relative.X)
 
-                                BatterEvent:FireServer('SwingAtBall', AngleTowards, BallPosition, LaunchAngle, Relative.Y, true)
+                                print(`Client Hit Stats:\nRelative Y: {Southernplayalisticadillacmuzik}\nLaunch Angle: {LaunchAngle}`)
+
+                                BatterEvent:FireServer('SwingAtBall', AngleTowards, BallPosition, LaunchAngle, Southernplayalisticadillacmuzik, true)
                                 task.delay(.5, function()
                                     StepOut()
                                 end)
@@ -195,6 +212,8 @@ BatterEvent.OnClientEvent:Connect(function(Action, ...)
                         end
                     else
                         print('Swing and a miss, bud! (you missed)')
+                        task.wait(1)
+                        Animations.Swing:Stop(.5)
                     end
                 end
             end)
