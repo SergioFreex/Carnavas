@@ -132,7 +132,7 @@ PitcherEvent.OnServerEvent:Connect(function(Player, Action, ...)
         end
         _G.PitcherOn = {false, nil}
         Cooldown = true
-        task.wait(1)
+        task.wait(5)
         Cooldown = false
     end
 end)

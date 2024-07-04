@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local PlayerService = game:GetService('Players')
 
 -- local StrikeZone = game.Workspace:FindFirstChild('StrikeZone', true)
-local Count = ReplicatedStorage.Carnavas.Count
+local Count = ReplicatedStorage.Carnavas.GameInfo.Count
 
 local Balls = Count.Balls
 local Strikes = Count.Strikes

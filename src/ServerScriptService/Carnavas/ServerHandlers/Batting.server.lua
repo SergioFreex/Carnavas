@@ -6,7 +6,7 @@ local PlayerService = game:GetService('Players')
 local BatterEvent = ReplicatedStorage.Carnavas.Events.BatterEvent
 local BatterPosition = game.Workspace:FindFirstChild('BatterPosition', true)
 local BallsFolder = game.Workspace:WaitForChild('Balls', 10)
-local Count = ReplicatedStorage.Carnavas.Count
+local Count = ReplicatedStorage.Carnavas.GameInfo.Count
 
 local Balls = Count.Balls
 local Strikes = Count.Strikes
@@ -17,7 +17,7 @@ local Debounce = {false, 1}
 -- Gaussian function (idk what that is lol)
 function GetLaunchAngleVelocity(LaunchAngle: number)
     local a = _G.Configs.MaxPower -- Maximum velocity
-    local b = 30 -- Angle for maximum velocity
+    local b = 45 -- Angle for maximum velocity
     local c = 15 -- Controls the width of the 'bell'
     local Velocity = a * math.exp(-(LaunchAngle - b)^2 / (2*c^2))
     return Velocity
@@ -134,6 +134,7 @@ BatterEvent.OnServerEvent:Connect(function(Player, Action, ...)
             print(`Hit Stats:\nLaunch Angle: {LaunchAngle}\nHit Velocity: {FinalVelo}`)
 
             local HitBall = _G.BallHandler:CastTheGyattDamnBall(BallPosition, NewLookVector * 2500, FinalVelo, Vector3.new(0, FinalDrop, 0), Player.Character, false, false, tostring(Player.UserId)) -- old drop value: -49.05
+            _G.BallHandler:GetCastHitPosition(BallPosition, NewLookVector * 2500, FinalVelo, Vector3.new(0, FinalDrop, 0), Player.Character, tostring(Player.UserId))
             HitBall.Name = 'HitBall'
         else
             

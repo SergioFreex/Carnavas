@@ -9,7 +9,7 @@ local StarterGui = game:GetService('StarterGui')
 
 -- // Variables \\ --
 local LocalPlayer = PlayerService.LocalPlayer
-local PitchingUI = LocalPlayer.PlayerGui:WaitForChild('Pitching', 10)
+local PitchingUI = LocalPlayer.PlayerGui:WaitForChild('Carnavas', 10).Pitching
 local Mouse = LocalPlayer:GetMouse()
 local StrikeZone = game.Workspace.Carnavas.Batting:WaitForChild('StrikeZone', 10)
 local Camera = game.Workspace.CurrentCamera
@@ -43,6 +43,18 @@ local Keycodes = {
     [Enum.KeyCode.D] = 'SL'
 }
 
+local function SetStrikeZoneTransparency(number)
+    if StrikeZone:IsA('Model') or StrikeZone:IsA('Folder') then
+        for _,v in next, StrikeZone:GetChildren() do
+            if v:IsA('BasePart') then
+                v.Transparency = number
+            end
+        end
+    elseif StrikeZone:IsA('BasePart') then
+        StrikeZone.Transparency = number
+    end
+end
+
 local function KillAllListeners()
     for key,_ in next, Connections do
         if Connections[key].Connected == true then
@@ -71,12 +83,12 @@ local function Disengage(Humanoid)
     if PitchingUI.Main.Position ~= Main_ClosedPos then
         Main_Close:Play()
         Main_Close.Completed:Connect(function(playbackState)
-            PitchingUI.Enabled = false
+            PitchingUI.Visible = false
         end)
         CurrentPitchSelected = nil
     end
     
-    StrikeZone.Transparency = 1
+    SetStrikeZoneTransparency(1)
 
     StarterGui:SetCore('ResetButtonCallback', true)
     KillAllListeners()
@@ -100,9 +112,9 @@ PitcherEvent.OnClientEvent:Connect(function(Action, ...)
 
             StarterGui:SetCore('ResetButtonCallback', false)
 
-            StrikeZone.Transparency = .75
+            SetStrikeZoneTransparency(.65)
 
-            PitchingUI.Enabled = true
+            PitchingUI.Visible = true
             PitchingUI.Main.Position = Main_ClosedPos
             Main_Open:Play()
             PitchingUI.Main.CurrentPitch.Text = '<b>No Pitch Selected</b>'
@@ -161,10 +173,11 @@ PitcherEvent.OnClientEvent:Connect(function(Action, ...)
             Connections.MouseListener = Mouse.Button1Down:Connect(function()
                 if Pitching then return end
                 if CurrentPitchSelected == nil then return end
+                if not Mouse.Target:FindFirstAncestor('Batting') then return end
                 Pitching = true
                 Connections.InputListener:Disconnect()
                 Connections.InputListener = nil
-                StrikeZone.Transparency = 1
+                SetStrikeZoneTransparency(1)
                 PitcherEvent:FireServer('ThrowPitch', CurrentPitchSelected, Mouse.Hit, 1.38)
                 Animations.Throwing:Play()
                 Animations.Idle:Stop()
