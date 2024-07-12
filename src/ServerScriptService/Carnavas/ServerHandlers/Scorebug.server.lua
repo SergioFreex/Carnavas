@@ -7,8 +7,6 @@ local Event = ReplicatedStorage.Carnavas.Events.ScorebugEvent
 
 -- // Game Values \\ --
 local GameValues = ReplicatedStorage.Carnavas:WaitForChild('GameInfo')
-local HomeValues = GameValues.Home
-local AwayValues = GameValues.Away
 local MiscValues = GameValues.Misc
 
 Event.OnServerEvent:Connect(function(Player, Function, ...)
@@ -78,6 +76,51 @@ Event.OnServerEvent:Connect(function(Player, Function, ...)
             if GameValues.Count.Balls.Value + 1 <= 4 then
                 GameValues.Count.Balls.Value += 1
             end
+        end
+
+    -- // Increase or decrease team points
+    elseif Function == 'AddPoint' then
+        local Action = Args[1]
+        local Side = Args[2]
+        local SideValues = GameValues:FindFirstChild(Side)
+        if SideValues then
+            print(Action)
+            if Action == 'Add' then
+                SideValues.Points.Value += 1
+            elseif Action == 'Subtract' then
+                if SideValues.Points.Value - 1 >= 0 then
+                    SideValues.Points.Value -= 1
+                end
+            end
+        else
+            print('couldnt find side values')
+        end
+    elseif Function == 'SetName' then
+        local NameSet = Args[1]
+        local Side = Args[2]
+        local SideValues = GameValues:FindFirstChild(Side)
+        if SideValues then
+            SideValues.TeamName.Value = NameSet
+        else
+            print('couldnt find side values')
+        end
+    elseif Function == 'Homerun' then
+        local Side = Args[1]
+        local SideValues = GameValues:FindFirstChild(Side)
+
+        if SideValues then
+            local PointsToAdd = 1
+
+            for _,v in next, MiscValues:GetChildren() do
+                if string.find(v.Name, 'Base') then
+                    if v.Value == true then
+                        PointsToAdd += 1
+                        v.Value = false
+                    end
+                end
+            end
+
+            SideValues.Points.Value += PointsToAdd
         end
     end
 end)

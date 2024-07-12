@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local PlayerService = game:GetService('Players')
 local UserInputService = game:GetService('UserInputService')
+local ContentProvider = game:GetService('ContentProvider')
 
 -- // Variables \\ --
 local LocalPlayer = PlayerService.LocalPlayer
@@ -15,6 +16,7 @@ local Connection
 
 local function LoadThrowTrack(Character)
     local ThrowAnimation = FieldingAnimations.Throw_Close
+    ContentProvider:PreloadAsync({ThrowAnimation.AnimationId})
     local Humanoid = Character:FindFirstChildOfClass('Humanoid')
     ThrowTrack = Humanoid.Animator:LoadAnimation(ThrowAnimation)
 end
@@ -33,8 +35,8 @@ FieldingEvent.OnClientEvent:Connect(function(Function, ...)
         Mouse.TargetFilter = game.Workspace.Carnavas.Batting
 
         if not TouchScreen then
-            Connection = Mouse.Button1Up:Connect(function()
-                if Mouse.Target ~= nil then
+            Connection = Mouse.Button1Down:Connect(function()
+                -- if Mouse.Target ~= nil then
                     local Hit = Mouse.Hit
                     local Character = LocalPlayer.Character
                     if Character then
@@ -52,12 +54,12 @@ FieldingEvent.OnClientEvent:Connect(function(Function, ...)
                             Connection = nil
                         end
                     end
-                end
+                -- end
             end)
         else
             Connection = UserInputService.TouchTap:Connect(function(_, GameProcessed)
                 if not GameProcessed then
-                    if Mouse.Target ~= nil then
+                    -- if Mouse.Target ~= nil then
                         local Hit = Mouse.Hit
                         local Character = LocalPlayer.Character
                         if Character then
@@ -75,7 +77,7 @@ FieldingEvent.OnClientEvent:Connect(function(Function, ...)
                                 Connection = nil
                             end
                         end
-                    end
+                    -- end
                 end
             end)
         end

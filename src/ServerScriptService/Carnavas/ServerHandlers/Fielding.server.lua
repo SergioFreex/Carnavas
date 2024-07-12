@@ -4,8 +4,18 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local TeamService = game:GetService('Teams')
 
 -- // Variables \\ --
+local CharactersFolder = Instance.new('Folder')
 local FieldingEvent = ReplicatedStorage.Carnavas.Events.FieldingEvent
+local FieldingHitbox = ReplicatedStorage.Carnavas.Instances.FieldingHitbox
 local BallsFolder = game.Workspace:WaitForChild('Balls', 10)
+
+CharactersFolder.Name = 'Characters'
+CharactersFolder.Parent = game.Workspace
+
+FieldingHitbox.Size = Vector3.new(10, .5, 10)
+FieldingHitbox.Transparency = 1
+-- FieldingHitbox.Attachment.Position = Vector3.new(0, ((FieldingHitbox.Size.Y / 2) * -1) + 3, 0)
+FieldingHitbox.AlignPosition.ApplyAtCenterOfMass = true
 
 _G.ClearBalls = function()
     for _,v in next, BallsFolder:GetChildren() do
@@ -19,18 +29,18 @@ _G.GiveFieldingHitbox = function(Player: Player)
     local Character = Player.Character
     if Character then
         if Character:FindFirstChild('FieldingHitbox') == nil then
-            local FieldingHitbox = ReplicatedStorage.Carnavas.Instances.FieldingHitbox:Clone()
-            FieldingHitbox.Parent = Character
-            FieldingHitbox.AlignPosition.Attachment1 = Character:FindFirstChild('RootAttachment', true)
-            FieldingHitbox:SetNetworkOwner(Player)
+            local newFieldingHitbox = ReplicatedStorage.Carnavas.Instances.FieldingHitbox:Clone()
+            newFieldingHitbox.Parent = Character
+            newFieldingHitbox.AlignPosition.Attachment1 = Character:FindFirstChild('RootAttachment', true)
+            newFieldingHitbox:SetNetworkOwner(Player)
         end
     end
 end
 
 PlayerService.PlayerAdded:Connect(function(Player)
-    Player:SetAttribute('Fielding', false)
-    
     Player.CharacterAdded:Connect(function(Character)
+        Player:SetAttribute('Fielding', false)
+        Character.Parent = CharactersFolder
         if Player.Team:GetAttribute('Fielding') == true then
             _G.GiveFieldingHitbox(Player)
         end
@@ -51,9 +61,9 @@ PlayerService.PlayerAdded:Connect(function(Player)
             end
         else
             if Player.Character and Player.Character.Humanoid.Health > 0 then
-                local FieldingHitbox = Player.Character:FindFirstChild('FieldingHitbox')
-                if FieldingHitbox then
-                    FieldingHitbox:Destroy()
+                local currentFieldingHitbox = Player.Character:FindFirstChild('FieldingHitbox')
+                if currentFieldingHitbox then
+                    currentFieldingHitbox:Destroy()
                 end
             end
         end

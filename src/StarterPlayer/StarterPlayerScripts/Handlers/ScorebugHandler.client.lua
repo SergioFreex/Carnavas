@@ -1,3 +1,5 @@
+repeat task.wait(1) until game:IsLoaded()
+
 -- // Services \\ --
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local PlayerService = game:GetService('Players')
@@ -5,10 +7,31 @@ local PlayerService = game:GetService('Players')
 -- // Variables \\ --
 local LocalPlayer = PlayerService.LocalPlayer
 repeat task.wait() until LocalPlayer:FindFirstChild('PlayerGui')
---local Scorebug = LocalPlayer.PlayerGui.Scorebug
-local Scorebug = LocalPlayer.PlayerGui:FindFirstChild('Scorebug')
+-- local Scorebug = LocalPlayer.PlayerGui.Scorebug
+local Scorebug = nil
 
-if not Scorebug then return end
+local Searching = true
+
+task.spawn(function()
+    while Searching do
+        task.wait(.5)
+        local scorywory = LocalPlayer.PlayerGui:FindFirstChild('Scorebug')
+        if scorywory then
+            Scorebug = scorywory
+            Searching = false
+        end
+    end
+end)
+
+for i = 0, 10, 1 do
+    task.wait(1)
+    if not Searching then
+        print('Carnavas :: Found scorebug UI')
+        break
+    end
+end
+
+if not Scorebug then print('Carnavas :: Could not find scorebug UI') return end
 
 -- // Scorebug Variables \\ --
 local Main = Scorebug.Main
@@ -46,6 +69,14 @@ function OnStartup()
     
     HomeTeam.TeamName.Text = HomeValues.TeamName.Value
     AwayTeam.TeamName.Text = AwayValues.TeamName.Value
+
+    HomeTeam.TeamName.Text = HomeValues.TeamName.Value
+    HomeTeam.Points.Text = tostring(HomeValues.Points.Value)
+    HomeTeam.PitcherBatter.Text = HomeValues.PitcherBatter.Value
+
+    AwayTeam.Points.Text = tostring(AwayValues.Points.Value)
+    AwayTeam.TeamName.Text = AwayValues.TeamName.Value
+    AwayTeam.PitcherBatter.Text = AwayValues.PitcherBatter.Value
     
     for _,v in next, Misc.Bases:GetChildren() do
         if v:IsA('ImageLabel') then
@@ -124,13 +155,34 @@ end)
 
 MiscValues.Inning:GetPropertyChangedSignal('Value'):Connect(UpdateInning)
 
+-- // Home values
 HomeValues.TeamName:GetPropertyChangedSignal('Value'):Connect(function()
     HomeTeam.TeamName.Text = HomeValues.TeamName.Value
+end)
+
+HomeValues.Points:GetPropertyChangedSignal('Value'):Connect(function()
+    HomeTeam.Points.Text = tostring(HomeValues.Points.Value)
+end)
+
+HomeValues.PitcherBatter:GetPropertyChangedSignal('Value'):Connect(function()
+    HomeTeam.PitcherBatter.Text = HomeValues.PitcherBatter.Value
+end)
+
+--
+
+-- // Away values
+AwayValues.Points:GetPropertyChangedSignal('Value'):Connect(function()
+    AwayTeam.Points.Text = tostring(AwayValues.Points.Value)
 end)
 
 AwayValues.TeamName:GetPropertyChangedSignal('Value'):Connect(function()
     AwayTeam.TeamName.Text = AwayValues.TeamName.Value
 end)
+
+AwayValues.PitcherBatter:GetPropertyChangedSignal('Value'):Connect(function()
+    AwayTeam.PitcherBatter.Text = AwayValues.PitcherBatter.Value
+end)
+--
 
 for _,v in next, Misc.Bases:GetChildren() do
     if v:IsA('ImageLabel') then
@@ -157,6 +209,7 @@ end
 local Event = ReplicatedStorage.Carnavas.Events.ScorebugEvent
 local UmpireFrame = Scorebug.Umpire
 local UmpireMiscFrame = UmpireFrame.Misc
+local UmpireTeamFrame = UmpireFrame.Teams
 
 for _,v in next, UmpireMiscFrame.Inning:GetChildren() do
     if v:IsA('TextButton') then
@@ -204,4 +257,29 @@ for _,v in next, UmpireMiscFrame.Outs:GetChildren() do
             Event:FireServer('Outs', v.Name)
         end)
     end
+end
+
+-- // Team settings
+for _,side in next, UmpireTeamFrame:GetChildren() do
+    local TeamSide = side.Name -- either Home or Away
+    local ScoreButtons = side.ScoreButtons
+    local TeamNameSetter: TextBox = side.TeamName
+
+    for _,button in next, ScoreButtons:GetChildren() do
+        if button:IsA('TextButton') then
+            button.MouseButton1Click:Connect(function()
+                Event:FireServer('AddPoint', button.Name, TeamSide)
+            end)
+        end
+    end
+
+    TeamNameSetter.FocusLost:Connect(function(EnterPressed)
+        if EnterPressed then
+            Event:FireServer('SetName', TeamNameSetter.Text, TeamSide)
+        end
+    end)
+
+    side.Homerun.MouseButton1Click:Connect(function()
+        Event:FireServer('Homerun', TeamSide)
+    end)
 end

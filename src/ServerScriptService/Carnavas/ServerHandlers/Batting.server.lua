@@ -3,16 +3,19 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local PlayerService = game:GetService('Players')
 
 -- // Variables \\ --
+local StrikeZone = game.Workspace:FindFirstChild('StrikeZone', true)
 local BatterEvent = ReplicatedStorage.Carnavas.Events.BatterEvent
 local BatterPosition = game.Workspace:FindFirstChild('BatterPosition', true)
 local BallsFolder = game.Workspace:WaitForChild('Balls', 10)
-local Count = ReplicatedStorage.Carnavas.GameInfo.Count
 
-local Balls = Count.Balls
-local Strikes = Count.Strikes
+local mrcheeksspecialidleanimation = Instance.new('Animation', ReplicatedStorage.Carnavas.Animations.BattingAnimations)
+mrcheeksspecialidleanimation.Name = 'Woated'
+mrcheeksspecialidleanimation.AnimationId = 'rbxassetid://18444158862'
 
 _G.BatterOn = {false, nil}
 local Debounce = {false, 1}
+
+_G.PreviousHitInfo = {}
 
 -- Gaussian function (idk what that is lol)
 function GetLaunchAngleVelocity(LaunchAngle: number)
@@ -28,6 +31,7 @@ end
 -- end
 
 BatterPosition.ProximityPrompt.Triggered:Connect(function(Player)
+    if not table.find(_G.Configs.Whitelist_Teams, Player.Team.Name) then _G.SendNotifcation('Error', 'You cannot bat or pitch on an unwhitelisted team.', Player) return end
     if _G.BatterOn[1] == false then
         local Character = Player.Character
         if not Character then return end
@@ -56,6 +60,7 @@ BatterPosition.ProximityPrompt.Triggered:Connect(function(Player)
         Character.HumanoidRootPart.CFrame = BatterPosition.CFrame
         Character.HumanoidRootPart.Anchored = true
         BatterPosition.ProximityPrompt.Enabled = false
+        _G.PitchingDisabled = false
         _G.BatterOn = {true, Player.UserId}
     end
 end)
@@ -65,16 +70,14 @@ BatterEvent.OnServerEvent:Connect(function(Player, Action, ...)
 
     local Args = {...}
     if Action == 'SwingAtBall' then
-        local StrikeZone = game.Workspace:FindFirstChild('StrikeZone', true)
         local Angle        = Args[1]
         local BallPosition = Args[2]
         local LaunchAngle  = Args[3]
-        local RelativeY    = Args[4]
-        local HitBall      = Args[5]
+        -- local RelativeY    = Args[4]
+        -- local HitBall      = Args[5]
         local SoundPart = Instance.new('Part')
         
-        if HitBall then
-            local NewLookVector = (StrikeZone.CFrame * CFrame.Angles(math.rad(LaunchAngle), math.rad(Angle), 0)).LookVector
+        local NewLookVector = (StrikeZone.CFrame * CFrame.Angles(math.rad(LaunchAngle), math.rad(Angle), 0)).LookVector
             local Velo = GetLaunchAngleVelocity(LaunchAngle)
             if Velo < 0 then Velo *= -1 end
 
@@ -133,13 +136,16 @@ BatterEvent.OnServerEvent:Connect(function(Player, Action, ...)
         
             print(`Hit Stats:\nLaunch Angle: {LaunchAngle}\nHit Velocity: {FinalVelo}`)
 
-            local HitBall = _G.BallHandler:CastTheGyattDamnBall(BallPosition, NewLookVector * 2500, FinalVelo, Vector3.new(0, FinalDrop, 0), Player.Character, false, false, tostring(Player.UserId)) -- old drop value: -49.05
-            _G.BallHandler:GetCastHitPosition(BallPosition, NewLookVector * 2500, FinalVelo, Vector3.new(0, FinalDrop, 0), Player.Character, tostring(Player.UserId))
-            HitBall.Name = 'HitBall'
-        else
-            
-        end
+            _G.PitchingDisabled = true
 
+            local HitBall = _G.BallHandler:CastTheGyattDamnBall(BallPosition, NewLookVector * 2500, FinalVelo, Vector3.new(0, FinalDrop, 0), Player.Character, false, false, tostring(Player.UserId)) -- old drop value: -49.05
+            local HitPosition = _G.BallHandler:GetCastHitPosition(BallPosition, NewLookVector * 2500, FinalVelo, Vector3.new(0, FinalDrop, 0), Player.Character, tostring(Player.UserId))
+            -- _G.PreviousHitInfo = {
+            --     ['LaunchAngle'] = LaunchAngle,
+            --     ['Velocity'] = FinalVelo,
+            --     ['Distance'] = math.floor((BallPosition - HitPosition).Magnitude) -- error was couldnt subtract vector3 from nil
+            -- }
+            HitBall.Name = 'HitBall'
 
     elseif Action == 'StepOutBattersBox' then
         if Player.Character then
@@ -159,6 +165,16 @@ BatterEvent.OnServerEvent:Connect(function(Player, Action, ...)
                     end
                 end
             end
+            _G.BatterOn = {false, nil}
+            task.wait(2)
+            BatterPosition.ProximityPrompt.Enabled = true
+        end
+    end
+end)
+
+PlayerService.PlayerAdded:Connect(function(Player)
+    if _G.BatterOn[1] then
+        if Player.UserId == _G.BatterOn[2] then
             _G.BatterOn = {false, nil}
             task.wait(2)
             BatterPosition.ProximityPrompt.Enabled = true

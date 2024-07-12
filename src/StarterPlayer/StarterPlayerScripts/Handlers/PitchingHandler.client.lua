@@ -6,12 +6,12 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local UserInputService = game:GetService('UserInputService')
 local TweenService = game:GetService('TweenService')
 local StarterGui = game:GetService('StarterGui')
+local ContentProvider = game:GetService('ContentProvider')
 
 -- // Variables \\ --
 local LocalPlayer = PlayerService.LocalPlayer
 local PitchingUI = LocalPlayer.PlayerGui:WaitForChild('Carnavas', 10).Pitching
 local Mouse = LocalPlayer:GetMouse()
-local StrikeZone = game.Workspace.Carnavas.Batting:WaitForChild('StrikeZone', 10)
 local Camera = game.Workspace.CurrentCamera
 local PitcherEvent = ReplicatedStorage.Carnavas.Events.PitcherEvent
 local Connections = {}
@@ -34,6 +34,8 @@ local PitchingAnimations = ReplicatedStorage.Carnavas.Animations.PitchingAnimati
 local Idle = PitchingAnimations.Idle
 local Throwing = PitchingAnimations.Throwing
 
+ContentProvider:PreloadAsync({Idle.AnimationId, Throwing.AnimationId})
+
 local Animations = {Idle = nil, Throwing = nil}
 local CurrentPitchSelected = nil
 
@@ -42,18 +44,6 @@ local Keycodes = {
     [Enum.KeyCode.A] = '4SFB',
     [Enum.KeyCode.D] = 'SL'
 }
-
-local function SetStrikeZoneTransparency(number)
-    if StrikeZone:IsA('Model') or StrikeZone:IsA('Folder') then
-        for _,v in next, StrikeZone:GetChildren() do
-            if v:IsA('BasePart') then
-                v.Transparency = number
-            end
-        end
-    elseif StrikeZone:IsA('BasePart') then
-        StrikeZone.Transparency = number
-    end
-end
 
 local function KillAllListeners()
     for key,_ in next, Connections do
@@ -75,7 +65,6 @@ local function Disengage(Humanoid)
     Camera.CameraType = Enum.CameraType.Custom
     Camera_ZoomOut:Play()
 
-    Humanoid.WalkSpeed = game.StarterPlayer.CharacterWalkSpeed
     Humanoid.AutoRotate = true
    
     PitchingUI.Thingy.Visible = false
@@ -87,8 +76,6 @@ local function Disengage(Humanoid)
         end)
         CurrentPitchSelected = nil
     end
-    
-    SetStrikeZoneTransparency(1)
 
     StarterGui:SetCore('ResetButtonCallback', true)
     KillAllListeners()
@@ -112,8 +99,6 @@ PitcherEvent.OnClientEvent:Connect(function(Action, ...)
 
             StarterGui:SetCore('ResetButtonCallback', false)
 
-            SetStrikeZoneTransparency(.65)
-
             PitchingUI.Visible = true
             PitchingUI.Main.Position = Main_ClosedPos
             Main_Open:Play()
@@ -133,7 +118,6 @@ PitcherEvent.OnClientEvent:Connect(function(Action, ...)
             
             if Humanoid and Humanoid:FindFirstChildOfClass('Animator') then
                 local Animator = Humanoid.Animator
-                Humanoid.WalkSpeed = 0
                 Humanoid.AutoRotate = false
                 Animations.Idle = Animator:LoadAnimation(Idle)
                 Animations.Throwing = Animator:LoadAnimation(Throwing)
@@ -168,8 +152,6 @@ PitcherEvent.OnClientEvent:Connect(function(Action, ...)
                 Disengage(Humanoid)
             end)
 
-
-
             Connections.MouseListener = Mouse.Button1Down:Connect(function()
                 if Pitching then return end
                 if CurrentPitchSelected == nil then return end
@@ -177,7 +159,6 @@ PitcherEvent.OnClientEvent:Connect(function(Action, ...)
                 Pitching = true
                 Connections.InputListener:Disconnect()
                 Connections.InputListener = nil
-                SetStrikeZoneTransparency(1)
                 PitcherEvent:FireServer('ThrowPitch', CurrentPitchSelected, Mouse.Hit, 1.38)
                 Animations.Throwing:Play()
                 Animations.Idle:Stop()

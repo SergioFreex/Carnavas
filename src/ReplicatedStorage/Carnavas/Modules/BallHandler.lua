@@ -28,8 +28,8 @@ local module = {}
 local SZ_Debounce = {false, 3}
 
 -- // Handing balls and strikes on pitched ball
-local function StrikeZone_PierceFunction(Raycast, Result, SegmentVelocity)
-    local instance: Instance = Result.Instance
+local function StrikeZone_PierceFunction(ActiveCast, Result, SegmentVelocity)
+    local instance = Result.Instance
     local StrikeOrNah = false
 
     if instance:FindFirstAncestor('Batting') then
@@ -85,7 +85,6 @@ local function StrikeZone_PierceFunction(Raycast, Result, SegmentVelocity)
 
         if RunService:IsClient() then
             CountBindEvent:Fire(StrikeOrNah)
-            print(StrikeOrNah)
         end
 
         return true
@@ -192,16 +191,44 @@ local function CreateIgnoreList(Receive)
     return IgnoreList
 end
 
+-- // Kolten Wong Issue
+local function Catchable(ActiveCast, Result, InstanceOptional)
+    local CaughtBy = CaughtByPlayer(Result.Instance)
+
+    if CaughtBy then
+            if ActiveCast and Result then -- aka when the ball is still in the air
+            local raycastParams = RaycastParams.new()
+            local Send = {CaughtBy.Character, game.Workspace.Carnavas.Batting}
+            raycastParams.FilterDescendantsInstances = CreateIgnoreList(Send)
+            raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+            local CasterPosition = ActiveCast:GetPosition()
+            local StartPosition = CaughtBy.Character.HumanoidRootPart.Position
+            local rayDistance = (StartPosition - CasterPosition).Magnitude
+            local rayDirection = CFrame.lookAt(StartPosition, CasterPosition).LookVector
+            local rayCheck = game.Workspace:Raycast(StartPosition, rayDirection * rayDistance, raycastParams)
+
+            if rayCheck then
+                return true
+            else
+                return false
+            end
+        end
+    end
+
+    return false -- if it didn't hit a fielding hitbox or whatever (IM FINNA CRASH OUT)
+end
+
 -- // Find the caster with the ID given
 local function GetCaster(CasterID)
     if RunService:IsServer() then
-        for key,cast in next, ServerCasters do
+        for key,_ in next, ServerCasters do
             if tostring(key) == tostring(CasterID) then
                 return ServerCasters[tostring(key)]
             end
         end
     elseif RunService:IsClient() then
-        for key,cast in next, ClientCasters do
+        for key,_ in next, ClientCasters do
             if tostring(key) == tostring(CasterID) then
                 return ClientCasters[tostring(key)]
             end
@@ -225,6 +252,7 @@ function module:CastTheGyattDamnBall(...)
     if not GetCaster(CasterName) then print('couldn\'t find caster.') return end
 
     local RayHitConnection = nil
+    local CastTerminatingConnection = nil
     local LengthChangedConnection = nil
 
     if RunService:IsServer() then
@@ -243,18 +271,27 @@ function module:CastTheGyattDamnBall(...)
     local InitialBall
     if not PitchingBall then
         local Send = {Playa, game.Workspace.Carnavas.Batting}
+        Behavior.CanPierceFunction = Catchable
         raycastParams.FilterDescendantsInstances = CreateIgnoreList(Send)
         InitialBall = ReplicatedStorage.Carnavas.Balls.Baseball:Clone()
+
+        InitialBall.CanCollide = false
+        InitialBall.CanQuery = false
+        InitialBall.CanTouch = false
     else
         local Send = {Playa}
         Behavior.CanPierceFunction = StrikeZone_PierceFunction
         raycastParams.FilterDescendantsInstances = CreateIgnoreList(Send)
         InitialBall = ReplicatedStorage.Carnavas.Balls.PitchedBall:Clone()
+
+        InitialBall.CanCollide = false
+        InitialBall.CanQuery = true
+        InitialBall.CanTouch = false
     end
 
     Behavior.RaycastParams = raycastParams
     Behavior.Acceleration = Drop
-    Behavior.MaxDistance = math.huge
+    Behavior.MaxDistance = 1000
 
     CasterInfo[1]:Fire(StartPosition, Direction, Speed, Behavior)
 
@@ -279,6 +316,16 @@ function module:CastTheGyattDamnBall(...)
             InitialBall.CFrame = CFrame.lookAt(LastPoint, LastPoint+Dir):ToWorldSpace(Offset)
         end)
     end
+
+    CastTerminatingConnection = CasterInfo[1].CastTerminating:Connect(function()
+        CasterInfo[2]:Fire()
+
+        if RunService:IsServer() then
+            InitialBall:Destroy()
+        elseif RunService:IsClient() then
+            InitialBall:Destroy()
+        end
+    end)
 
     RayHitConnection = CasterInfo[1].RayHit:Connect(function(Cast, Results)
         CasterInfo[2]:Fire()
@@ -309,7 +356,7 @@ function module:CastTheGyattDamnBall(...)
                         local Distance = (StartPosition - Results.Position).Magnitude
 
                         if Distance >= 220 then
-                            NewBall:ApplyImpulse((Vector3.new(Direction.X, math.rad(15), Direction.Z)) * (Speed / 25))
+                            NewBall:ApplyImpulse((Vector3.new(Direction.X, math.rad(15), Direction.Z)) * (Speed / 20))
                         else
                             NewBall:ApplyImpulse((Vector3.new(Direction.X, math.rad(15), Direction.Z)) * (Speed / 15))
                         end
@@ -367,20 +414,33 @@ function module:CastTheGyattDamnBall(...)
                                     if not Character then return end
                                     local Humanoid = Character:FindFirstChildOfClass('Humanoid')
                                     if Humanoid.Health > 0 then
-                                        KeepListening = false
-                                        NewBall:Destroy()
-                                        ReplicatedStorage.Carnavas.Events.FieldingEvent:FireClient(Plr_1, 'BeginFielding')
-                                        if Character:FindFirstChild('FakeBall', true) then
-                                            local FakeBall = Character:FindFirstChild('FakeBall', true)
-                                            local GloveFielded_Sound = GloveSounds.Fielded:Clone()
-                                            FakeBall.BallHighlight.Enabled = true
-                                            FakeBall.Transparency = 0
-                                            GloveFielded_Sound.Parent = FakeBall
-                                            GloveFielded_Sound:Play()
-                                            DebrisService:AddItem(GloveFielded_Sound, GloveFielded_Sound.TimeLength)
+                                        local raycastParams = RaycastParams.new()
+                                        local Send = {Plr_1.Character, game.Workspace.Carnavas.Batting, NewBall}
+                                        raycastParams.FilterDescendantsInstances = CreateIgnoreList(Send)
+                                        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+                                        local EndPosition = NewHitbox.Position
+                                        local StartPosition = Plr_1.Character.HumanoidRootPart.Position
+                                        local rayDistance = (StartPosition - EndPosition).Magnitude
+                                        local rayDirection = CFrame.lookAt(StartPosition, EndPosition).LookVector
+                                        local rayCheck = game.Workspace:Raycast(StartPosition, rayDirection * rayDistance, raycastParams)
+
+                                        if not rayCheck then
+                                            KeepListening = false
+                                            NewBall:Destroy()
+                                            ReplicatedStorage.Carnavas.Events.FieldingEvent:FireClient(Plr_1, 'BeginFielding')
+                                            if Character:FindFirstChild('FakeBall', true) then
+                                                local FakeBall = Character:FindFirstChild('FakeBall', true)
+                                                local GloveFielded_Sound = GloveSounds.Fielded:Clone()
+                                                FakeBall.BallHighlight.Enabled = true
+                                                FakeBall.Transparency = 0
+                                                GloveFielded_Sound.Parent = FakeBall
+                                                GloveFielded_Sound:Play()
+                                                DebrisService:AddItem(GloveFielded_Sound, GloveFielded_Sound.TimeLength)
+                                            end
+                                            Plr_1:SetAttribute('Fielding', true)
+                                            Connection:Disconnect()
                                         end
-                                        Plr_1:SetAttribute('Fielding', true)
-                                        Connection:Disconnect()
                                     end
                                 end
                             end
@@ -425,6 +485,7 @@ function module:CastTheGyattDamnBall(...)
     CasterInfo[2].Event:Once(function()
         if RunService:IsClient() or ReplicatedStorage.Carnavas.ClientVisuals.Value == false then LengthChangedConnection:Disconnect() end
         RayHitConnection:Disconnect()
+        CastTerminatingConnection:Disconnect()
     end)
 
     return InitialBall
@@ -463,7 +524,7 @@ if RunService:IsServer() then
 
         Behavior.RaycastParams = raycastParams
         Behavior.Acceleration = Drop * 100
-        Behavior.MaxDistance = math.huge
+        Behavior.MaxDistance = 1000
 
         HitBall_MarkerCaster:Fire(StartPosition, Direction, Speed * 10, Behavior)
 
@@ -505,6 +566,8 @@ if RunService:IsServer() then
             OnLengthChanged:Disconnect()
             RayHitConnection:Disconnect()
         end)
+
+        if HitPosition then return HitPosition end
     end
 end
 

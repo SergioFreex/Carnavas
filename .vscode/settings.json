@@ -1,3 +1,6 @@
 {
-    "vscord.app.privacyMode.enable": false
+    "vscord.app.privacyMode.enable": false,
+    "robloxLsp.diagnostics.disable": [
+        "redefined-local"
+    ]
 }

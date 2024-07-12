@@ -21,6 +21,7 @@ local Camera_OutTween = TweenService:Create(Camera, CameraTweenInfo, {FieldOfVie
 
 local Active = false
 
+if true then return end
 
 _G.CanRun = true
 _G.Running = false
